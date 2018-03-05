@@ -10,6 +10,12 @@ Parameters:
   SSMRoleARN:
     Description: "SSM service role ARN"
     Type: "String"
+  LambdaAMISSMParameterUpdateARN:
+    Description: "ARN of the lambda to call in order to update the SSM AMI parameter"
+    Type: "String"
+  SSMAMIParameterName:
+    Description: "Name of the SSM AMI Parameter to update"
+    Type: "String"
 Outputs:
   SSMAutomationDocument:
     Value: !Ref "SSMAutomationDocument"
@@ -41,11 +47,19 @@ Resources:
           TargetAmiName:
             type: "String"
             description: "The name of the new AMI that will be created."
-            default: ami-{{SourceAmiId}}-{{global:DATE_TIME}}
+            default: "{{SourceAmiId}}-{{global:DATE_TIME}}"
           InstanceType:
             type: "String"
             description: "Type of instance to launch as the workspace host."
-            default: "t2.micro"
+            default: "m4.large"
+          LambdaAMISSMParameterUpdateFunction:
+            type: "String"
+            description: "The lambda function to call in order to update the SSM AMI Parameter to the newest id"
+            default: !Ref "LambdaAMISSMParameterUpdateARN"
+          SSMAMIParameterName:
+            type: "String"
+            description: "The name of the SSM AMI Parameter to update"
+            default: !Ref "SSMAMIParameterName"
         mainSteps:
         - name: "launchInstance"
           action: "aws:runInstances"
@@ -101,5 +115,13 @@ Resources:
             InstanceIds:
             - "{{launchInstance.InstanceIds}}"
             DesiredState: "terminated"
+        - name: updateSsmParam
+          action: aws:invokeLambdaFunction
+          timeoutSeconds: 1200
+          maxAttempts: 1
+          onFailure: Abort
+          inputs:
+            FunctionName: "{{LambdaAMISSMParameterUpdateFunction}}"
+            Payload: '{"parameterName":"{{SSMAMIParameterName}}", "parameterValue":"{{createImage.ImageId}}"}'
         outputs:
         - createImage.ImageId

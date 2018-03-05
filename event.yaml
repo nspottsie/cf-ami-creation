@@ -13,7 +13,7 @@ Resources:
       Subscription:
         -
           Endpoint: !Ref "NotificationEmail"
-          Protocol: "email-json"
+          Protocol: "email"
   SSMEventRule:
     Type: "AWS::Events::Rule"
     Properties:

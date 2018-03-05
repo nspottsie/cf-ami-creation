@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Creates lambda function to update the AMI SSM Parameter"
+Parameters:
+  LambdaRoleARN:
+    Description: "Lambda role ARN"
+    Type: "String"
+Outputs:
+    AmiSSMParameterUpdateLambdaARN:
+      Value: !GetAtt "AmiSSMParameterUpdateLambda.Arn"
+Resources:
+  AmiSSMParameterUpdateLambda:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Handler: "index.lambda_handler"
+      Runtime: "python2.7"
+      Role: !Ref "LambdaRoleARN"
+      Timeout: 60
+      Code:
+        ZipFile: |
+          from __future__ import print_function
+          import json
+          import boto3
+
+          print('Loading function')
+
+          #Updates an SSM parameter
+          #Expects parameterName, parameterValue
+          def lambda_handler(event, context):
+              print("Received event: " + json.dumps(event, indent=2))
+
+              # get SSM client
+              client = boto3.client('ssm')
+
+              #confirm  parameter exists before updating it
+              response = client.describe_parameters(
+                 Filters=[{
+                     'Key': 'Name',
+                     'Values': [ event['parameterName'] ]
+                    }]
+              )
+
+              # if no parameter, or no description present... update or create the parameter
+              if not response['Parameters'] or 'Description' not in response['Parameters'][0]:
+                  print('No such parameter')
+                  response = client.put_parameter(
+                    Name=event['parameterName'],
+                    Value=event['parameterValue'],
+                    Type='String',
+                    Overwrite=True
+                  )
+
+              #if parameter exists and has a Description field, update it PLUS the Value
+              else:
+                  description = response['Parameters'][0]['Description']
+                  response = client.put_parameter(
+                    Name=event['parameterName'],
+                    Value=event['parameterValue'],
+                    Description=description,
+                    Type='String',
+                    Overwrite=True
+                  )
+
+              reponseString = 'Updated parameter %s with value %s.' % (event['parameterName'], event['parameterValue'])
+
+              return reponseString

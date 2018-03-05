@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Creates IAM roles requiredSSMLambdaARN for SSM"
+Description: "Creates IAM roles required for SSM"
 Outputs:
   EC2InstanceProfile:
     Value: !Ref "EC2InstanceProfile"
@@ -43,6 +43,7 @@ Resources:
           Action: "sts:AssumeRole"
       ManagedPolicyArns:
       - "arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"
+      - "arn:aws:iam::aws:policy/service-role/AWSLambdaRole"
       Path: "/"
       Policies:
       - PolicyName: "passrole"
